@@ -15,6 +15,7 @@ class PageFlipWidget extends StatefulWidget {
     this.initialIndex = 0,
     this.lastPage,
     this.isRightSwipe = false,
+    this.onPageChanged,
   })  : assert(initialIndex < children.length, 'initialIndex cannot be greater than children length'),
         super(key: key);
 
@@ -26,6 +27,7 @@ class PageFlipWidget extends StatefulWidget {
   final double cutoffForward;
   final double cutoffPrevious;
   final bool isRightSwipe;
+  final ValueChanged<int>? onPageChanged;
 
   @override
   PageFlipWidgetState createState() => PageFlipWidgetState();
@@ -168,6 +170,9 @@ class PageFlipWidgetState extends State<PageFlipWidget> with TickerProviderState
     if (pageNumber < pages.length) {
       currentPageIndex.value = pageNumber;
       currentWidget.value = pages[pageNumber];
+      if(widget.onPageChanged != null) {
+        widget.onPageChanged!(pageNumber);
+      }
     }
 
     if (_isLastPage) {
@@ -187,6 +192,9 @@ class PageFlipWidgetState extends State<PageFlipWidget> with TickerProviderState
     currentPageIndex.value = pageNumber;
     currentWidget.value = pages[pageNumber];
     imageData[pageNumber] = null;
+    if(widget.onPageChanged != null) {
+      widget.onPageChanged!(pageNumber);
+    }
   }
 
   Future goToPage(int index) async {
@@ -194,6 +202,9 @@ class PageFlipWidgetState extends State<PageFlipWidget> with TickerProviderState
       setState(() {
         pageNumber = index;
       });
+      if(widget.onPageChanged != null) {
+        widget.onPageChanged!(pageNumber);
+      }
     }
     for (var i = 0; i < _controllers.length; i++) {
       if (i == index) {
