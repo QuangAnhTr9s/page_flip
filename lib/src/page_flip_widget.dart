@@ -16,6 +16,9 @@ class PageFlipWidget extends StatefulWidget {
     this.lastPage,
     this.isRightSwipe = false,
     this.onPageChanged,
+    this.minScale = 1.0,
+    this.maxScale = 2.0,
+    this.initScale = 1.0,
   })  : assert(initialIndex < children.length, 'initialIndex cannot be greater than children length'),
         super(key: key);
 
@@ -28,6 +31,10 @@ class PageFlipWidget extends StatefulWidget {
   final double cutoffPrevious;
   final bool isRightSwipe;
   final ValueChanged<int>? onPageChanged;
+  final double? minScale;
+  final double? maxScale;
+  final double? initScale;
+
 
   @override
   PageFlipWidgetState createState() => PageFlipWidgetState();
@@ -38,6 +45,13 @@ class PageFlipWidgetState extends State<PageFlipWidget> with TickerProviderState
   List<Widget> pages = [];
   final List<AnimationController> _controllers = [];
   bool? _isForward;
+  double scale = 1.0;
+  double _minScale = 1.0;
+  double _maxScale = 2.0;
+  Offset _offset = Offset.zero;
+  double _previousScale = 1.0;
+  Offset _previousOffset = Offset.zero;
+
 
   @override
   void didUpdateWidget(PageFlipWidget oldWidget) {
@@ -59,6 +73,7 @@ class PageFlipWidgetState extends State<PageFlipWidget> with TickerProviderState
     currentPage = ValueNotifier(-1);
     currentWidget = ValueNotifier(Container());
     currentPageIndex = ValueNotifier(0);
+    scale = widget.initScale ?? 1.0;
     _setUp();
   }
 
@@ -221,11 +236,61 @@ class PageFlipWidgetState extends State<PageFlipWidget> with TickerProviderState
     currentWidget.value = pages[pageNumber];
     currentPage.value = pageNumber;
   }
+  void increaseScale() {
+    if(scale > (widget.maxScale ?? _maxScale) ) return;
+    setState(() {
+      scale *= 1.1;
+    });
+  }
 
+  void decreaseScale() {
+    if(scale < (widget.minScale ?? _minScale)) return;
+    setState(() {
+      scale /= 1.1;
+    });
+    _adjustOffset();
+  }
+
+  void resetScale() {
+    setState(() {
+      scale = widget.initScale ?? 1.0;
+    });
+    _adjustOffset();
+  }
+  void _adjustOffset() {
+    final maxOffsetX = (context.size!.width * (scale - 1)) / 2;
+    final maxOffsetY = (context.size!.height * (scale - 1)) / 2;
+
+    _offset = Offset(
+      _offset.dx.clamp(-maxOffsetX, maxOffsetX),
+      _offset.dy.clamp(-maxOffsetY, maxOffsetY),
+    );
+  }
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, dimens) => GestureDetector(
+        onScaleStart: (details) {
+          _previousScale = scale;
+          _previousOffset = details.focalPoint;
+        },
+        onScaleUpdate: (details) {
+          setState(() {
+            scale = (_previousScale * details.scale).clamp(_minScale, _maxScale);
+
+            // Giới hạn việc di chuyển widget
+            final newOffset = _offset + (details.focalPoint - _previousOffset);
+            final maxOffsetX = (context.size!.width * (scale - 1)) / 2;
+            final maxOffsetY = (context.size!.height * (scale - 1)) / 2;
+
+            _offset = Offset(
+              newOffset.dx.clamp(-maxOffsetX, maxOffsetX),
+              newOffset.dy.clamp(-maxOffsetY, maxOffsetY),
+            );
+
+            _previousOffset = details.focalPoint;
+          });
+        },
         behavior: HitTestBehavior.opaque,
         onTapDown: (details) {},
         onTapUp: (details) {},
@@ -235,14 +300,20 @@ class PageFlipWidgetState extends State<PageFlipWidget> with TickerProviderState
         onHorizontalDragCancel: () => _isForward = null,
         onHorizontalDragUpdate: (details) => _turnPage(details, dimens),
         onHorizontalDragEnd: (details) => _onDragFinish(),
-        child: Stack(
-          fit: StackFit.expand,
-          children: <Widget>[
-            if (widget.lastPage != null) ...[
-              widget.lastPage!,
-            ],
-            if (pages.isNotEmpty) ...pages else ...[const SizedBox.shrink()],
-          ],
+        child: Transform.translate(
+          offset: _offset,
+          child: Transform.scale(
+            scale: scale,
+            child: Stack(
+              fit: StackFit.expand,
+              children: <Widget>[
+                if (widget.lastPage != null) ...[
+                  widget.lastPage!,
+                ],
+                if (pages.isNotEmpty) ...pages else ...[const SizedBox.shrink()],
+              ],
+            ),
+          ),
         ),
       ),
     );
