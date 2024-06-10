@@ -113,7 +113,7 @@ class PageFlipWidgetState extends State<PageFlipWidget> with TickerProviderState
     if (_isForward == null) {
       if (widget.isRightSwipe ? details.delta.dx < 0.0 : details.delta.dx > 0.0) {
         _isForward = false;
-      } else if (widget.isRightSwipe ? details.delta.dx > 0.2 : details.delta.dx < -0.2) {
+      } else if (widget.isRightSwipe ? details.delta.dx > 5 : details.delta.dx < -5) {
         _isForward = true;
       } else {
         _isForward = null;
@@ -229,8 +229,8 @@ class PageFlipWidgetState extends State<PageFlipWidget> with TickerProviderState
         behavior: HitTestBehavior.opaque,
         onTapDown: (details) {},
         onTapUp: (details) {},
-        onPanDown: (details) {},
-        onPanEnd: (details) {},
+        // onPanDown: (details) {},
+        // onPanEnd: (details) {},
         onTapCancel: () {},
         onHorizontalDragCancel: () => _isForward = null,
         onHorizontalDragUpdate: (details) => _turnPage(details, dimens),
